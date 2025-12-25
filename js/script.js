@@ -1,6 +1,6 @@
-console.log("Проверочка");
-
 const APP_STATE_KEY = "weatherAppState";
+const API_KEY = "11bfaffb59904ac8ba3205312252512"
+const BASE_URL = "https://api.weatherapi.com/v1/current.json";
 let currentState = {
     currentLocation: null,
     cities: [],
@@ -13,11 +13,10 @@ let refreshButton = null;
 let weatherContainer = null;
 
 function createAppContainer() {
-    appContainer = document.createElement("div");
-    appContainer.id = "app";
-    document.body.appendChild(appContainer);
+    appContainer = document.getElementById("app");
     return appContainer;
 }
+
 
 function createTile(container) {
     const tile = document.createElement("h1");
@@ -32,7 +31,7 @@ function createRefreshButton(container) {
     button.textContent = "Обновить";
     button.disabled = true;
     button.addEventListener("click", () => {
-        console.log("проверка 2.0");
+
     });
     container.appendChild(button);
     return button;
@@ -48,7 +47,7 @@ function createWeatherContainer(container) {
 function createCityForm(container) {
     const form = document.createElement("form");
     form.classList.add("city-form");
-    form.id = "city_form";
+    form.id = "city-form";
     form.style.display = "none";
 
     const input = document.createElement("input");
@@ -107,6 +106,59 @@ function loadState() {
     }
 }
 
+function renderWeather(data) {
+    const location = data.location;
+    const current = data.current;
+
+    const iconUrl = current.condition.icon.startsWith("//")
+        ? "https:" + current.condition.icon
+        : current.condition.icon;
+
+    weatherContainer.innerHTML = `
+      <div class="weather-card">
+        <h2>${location.name}, ${location.country}</h2>
+        <p class="temp">${Math.round(current.temp_c)}°C</p>
+        <p class="desc">${current.condition.text}</p>
+        <img src="${iconUrl}" alt="Погода" class="weather-icon"/>
+        <div class="weather-details">
+          <p><strong>Ощущается как:</strong> ${Math.round(current.feelslike_c)}°C</p>
+          <p><strong>Влажность:</strong> ${current.humidity}%</p>
+          <p><strong>Давление:</strong> ${current.pressure_mb} гПа</p>
+          <p><strong>Ветер:</strong> ${current.wind_kph} км/ч</p>
+        </div>
+        <small>Обновлено: ${new Date().toLocaleTimeString("ru-RU")}</small>
+      </div>
+    `;
+}
+
+function fetchWeatherByCoords(lat, lon) {
+    const url = `${BASE_URL}?key=${API_KEY}&q=${lat},${lon}&lang=ru&units=metric`;
+
+    weatherContainer.innerHTML = "<p>Загружаем Вашу погоду...подождите немного</p>";
+    refreshButton.disabled = true;
+
+    fetch(url)
+        .then((response) => {
+        if (!response.ok) throw new Error("Ошибка загрузки погоды");
+        return response.json();
+    })
+
+        .then((data) => {
+            currentState.weatherData = data;
+            currentState.lastUpdated = new Date().toISOString();
+            saveState();
+            renderWeather(data);
+            refreshButton.disabled = false;
+        })
+        .catch(() => {
+            showError("Не удалось загрузить погоду.");
+            weatherContainer.innerHTML = "<p>Не удалось загрузить данные</p>";
+            refreshButton.disabled = false;
+            showCityForm();
+        })
+
+}
+
 function requestLocation() {
     if (!navigator.geolocation) {
         showError("Возникли небольшие проблемы с определением вашей геолокации :(");
@@ -123,12 +175,10 @@ function requestLocation() {
     },
     (error) => {
         showCityForm();
-        weatherContainer.innerHTML = <p>Не получилось корректно определить ваше местоположение</p>;
+        weatherContainer.innerHTML = "<p>Не получилось корректно определить ваше местоположение</p>";
     }
     );
 }
-
-
 
 async function searchCity(query) {
     if (!query.trim()) return [];
@@ -165,7 +215,7 @@ function setupCityInput() {
         results.slice(0, 5).forEach((city) => {
             const li = document.createElement("li");
             li.className = "suggestions-item";
-            li.textContent = "$(city.name), $(city.country)";
+            li.textContent = `${city.name}, ${city.country}`;
             li.dataset.lat = city.lat;
             li.dataset.lon = city.lon;
             li.addEventListener("click", () => {
@@ -184,6 +234,7 @@ function setupCityInput() {
 }
 
 function init() {
+    loadState();
     createAppContainer();
     createTile(appContainer);
     weatherContainer = createWeatherContainer(appContainer);
@@ -194,8 +245,18 @@ function init() {
     cityError = formElements.error;
     refreshButton = createRefreshButton(appContainer);
 
-    formElements.form.display = "none";
+    setupCityInput();
+    refreshButton.addEventListener("click", () => {
+        const { currentLocation } = currentState;
+        if (currentLocation?.lat && currentLocation?.lon) {
+            fetchWeatherByCoords(currentLocation.lat, currentLocation.lon);
+        }
+    });
 
     requestLocation()
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    init();
+});
 
