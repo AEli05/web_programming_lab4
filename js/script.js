@@ -96,11 +96,91 @@ function showCityForm() {
     clearSuggestions();
 }
 
+function saveState() {
+    localStorage.setItem(APP_STATE_KEY, JSON.stringify(currentState));
+}
+
+function loadState() {
+    const saved = localStorage.getItem(APP_STATE_KEY);
+    if (saved) {
+        currentState = JSON.parse(saved);
+    }
+}
+
 function requestLocation() {
     if (!navigator.geolocation) {
         showError("Возникли небольшие проблемы с определением вашей геолокации :(");
         showCityForm();
     }
+
+    weatherContainer.innerHTML = "<p>Определяем местоположение, подождите...</p>";
+
+    navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude: lat, longitude: lon } = position.coords;
+        currentState.currentLocation = { name: "Текущее местоположение", lat, lon };
+        saveState();
+        fetchWeatherByCoords(lat, lon);
+    },
+    (error) => {
+        showCityForm();
+        weatherContainer.innerHTML = <p>Не получилось корректно определить ваше местоположение</p>;
+    }
+    );
+}
+
+
+
+async function searchCity(query) {
+    if (!query.trim()) return [];
+
+    try {
+        const response = await fetch(
+            `http://api.weatherapi.com/v1/searchjson?key=11bfaffb59904ac8ba3205312252512&q=${encodeURIComponent(query)}`
+        );
+
+        if (!response.ok) return [];
+
+        return await response.json();
+    } catch (error) {
+        return [];
+    }
+}
+
+function setupCityInput() {
+    cityInput.addEventListener("input", async (e) => {
+        const query = e.target.value.trim();
+        clearSuggestions();
+
+        if (query.length < 2) return;
+
+        const results = await searchCity(query);
+        if (results.length === 0) {
+            const li = document.createElement("li");
+            li.className = "suggestions-item empty";
+            li.textContent = "Город не найден";
+            suggestionsList.appendChild(li);
+            return;
+        }
+
+        results.slice(0, 5).forEach((city) => {
+            const li = document.createElement("li");
+            li.className = "suggestions-item";
+            li.textContent = "$(city.name), $(city.country)";
+            li.dataset.lat = city.lat;
+            li.dataset.lon = city.lon;
+            li.addEventListener("click", () => {
+                fetchWeatherByCoords(city.lat, city.lon);
+                hideCityForm();
+            });
+            suggestionsList.appendChild(li);
+        });
+    });
+
+    document.addEventListener("click", e => {
+        if (!cityInput.contains(e.target) && !suggestionsList.contains(e.target)) {
+
+        }
+    });
 }
 
 function init() {
