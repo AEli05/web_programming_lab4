@@ -1,0 +1,153 @@
+{
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: rgba(188, 188, 188, 0.85);
+    color: black;
+}
+
+#app {
+    max-width: 900px;
+    margin: 0;
+    padding: 16px;
+}
+
+.app-title {
+    margin: 0 0 16px;
+    text-align: center;
+    font-size: 24px;
+}
+
+#refresh-btn {
+    display: block;
+    margin: 0 auto 16px;
+    padding: 16px;
+    font-size: 16px;
+    border-radius: 4px;
+    border: 1px;
+    background: white;
+    cursor: pointer;
+}
+
+#refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#weather-container {
+    margin-top: 16px;
+}
+
+.weather-card {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.weather-card h2 {
+    margin-top: 0;
+    font-size: 18px;
+}
+
+.current-block {
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.temp {
+    font-size: 36px;
+    margin: 4px 0;
+}
+
+.desc {
+    margin: 4px 0;
+    color: #555;
+}
+
+.weather-icon {
+    width: 64px;
+    height: 64px;
+}
+
+.weather-details {
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.weather-details p {
+    margin: 4px 0;
+}
+
+.forecast-title {
+    margin: 10px 0 8px;
+    font-size: 16px;
+}
+
+.forecast-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.forecast-day {
+    background: #f7f7f7;
+    border-radius: 6px;
+    padding: 8px;
+    text-align: center;
+    font-size: 13px;
+}
+
+.forecast-icon {
+    width: 40px;
+    height: 40px;
+}
+
+.city-form {
+    margin-top: 12px;
+}
+
+.city-form input {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+}
+
+.error-message {
+    margin-top: 6px;
+    color: #b00020;
+    font-size: 13px;
+}
+
+.suggestions {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0;
+    border: 1px solid #ccc;
+    background: #fff;
+}
+
+.suggestions-item {
+    padding: 6px 8px;
+    cursor: pointer;
+}
+
+.suggestions-item:hover {
+    background: #eee;
+}
+
+.suggestions-item.empty {
+    color: #777;
+    cursor: default;
+}
+
+@media (max-width: 600px) {
+    .forecast-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
