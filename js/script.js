@@ -11,6 +11,7 @@ let suggestionsList = null;
 let cityError = null;
 let refreshButton = null;
 let weatherContainer = null;
+let selectedCity = null;
 
 function createAppContainer() {
     appContainer = document.getElementById("app");
@@ -72,6 +73,21 @@ function createCityForm(container) {
 
 }
 
+function createAddCityButton(container) {
+    const btn = document.createElement("button");
+    btn.id = "add-city-btn";
+    btn.textContent = "Добавить город";
+    btn.type = "button";
+
+    btn.addEventListener("click", () => {
+        showCityForm();
+    });
+
+    container.appendChild(btn);
+    return btn;
+}
+
+
 function showError(message) {
     const error = document.getElementById("city-error");
     error.textContent = message;
@@ -80,6 +96,17 @@ function showError(message) {
         error.style.display = "none";
     }, 5000);
 }
+
+function showCityInputError(message) {
+    cityError.textContent = message;
+    cityError.style.display = "block";
+}
+
+function hideCityInputError() {
+    cityError.textContent = "";
+    cityError.style.display = "none";
+}
+
 
 function clearSuggestions() {
     suggestionsList.innerHTML = "";
@@ -110,14 +137,17 @@ function renderWeather(data) {
     const location = data.location;
     const current = data.current;
 
-    const iconUrl = current.condition.icon.startsWith("//")
-        ? "https:" + current.condition.icon
-        : current.condition.icon;
+    const forecastDays = data.forecast?.forecastday || [];
+    if (forecastDays.length === 0) return;
 
-    const days = data.forecast?.forecastday || [];
+    const today = forecastDays[0].day;
 
-    const daysHtml = days.map((d) => {
-        const dayIcon = d.day.condition.icon.startsWith("//")
+    const todayIconUrl = today.condition.icon.startsWith("//")
+        ? "https:" + today.condition.icon
+        : today.condition.icon;
+
+    const daysHtml = forecastDays.map((d, index) => {
+        const dayIconUrl = d.day.condition.icon.startsWith("//")
             ? "https:" + d.day.condition.icon
             : d.day.condition.icon;
 
@@ -127,32 +157,35 @@ function renderWeather(data) {
         });
 
         return `
-      <div class="forecast-day">
-        <div class="forecast-date">${dateText}</div>
-        <img class="forecast-icon" src="${dayIcon}" alt="icon" />
-        <div class="forecast-temp">${Math.round(d.day.avgtemp_c)}°C</div>
-        <div class="forecast-desc">${d.day.condition.text}</div>
-      </div>
-    `;
+          <div class="forecast-day ${index === 0 ? "today" : ""}">
+            <div class="forecast-date">${dateText}</div>
+            <img class="forecast-icon" src="${dayIconUrl}" alt="icon" />
+            <div class="forecast-temp">${Math.round(d.day.avgtemp_c)}°C</div>
+            <div class="forecast-desc">${d.day.condition.text}</div>
+          </div>
+        `;
     }).join("");
-
 
     weatherContainer.innerHTML = `
       <div class="weather-card">
         <h3 class="forecast-title">Прогноз на 5 дней</h3>
         <div class="forecast-grid">
-            ${daysHtml}
+          ${daysHtml}
         </div>
         <h2>${location.name}, ${location.country}</h2>
-        <p class="temp">${Math.round(current.temp_c)}°C</p>
-        <p class="desc">${current.condition.text}</p>
-        <img src="${iconUrl}" alt="Погода" class="weather-icon"/>
+        <p class="temp">${Math.round(today.avgtemp_c)}°C</p>
+        <p class="desc">${today.condition.text}</p>
+        <img src="${todayIconUrl}" alt="Погода" class="weather-icon"/>
+
         <div class="weather-details">
+          <p><strong>Мин:</strong> ${Math.round(today.mintemp_c)}°C</p>
+          <p><strong>Макс:</strong> ${Math.round(today.maxtemp_c)}°C</p>
           <p><strong>Ощущается как:</strong> ${Math.round(current.feelslike_c)}°C</p>
           <p><strong>Влажность:</strong> ${current.humidity}%</p>
           <p><strong>Давление:</strong> ${current.pressure_mb} гПа</p>
           <p><strong>Ветер:</strong> ${current.wind_kph} км/ч</p>
         </div>
+
         <small>Обновлено: ${new Date().toLocaleTimeString("ru-RU")}</small>
       </div>
     `;
@@ -161,7 +194,7 @@ function renderWeather(data) {
 function fetchWeatherByCoords(lat, lon) {
     const url = `${BASE_URL}?key=${API_KEY}&q=${lat},${lon}&days=5&lang=ru`;
 
-    weatherContainer.innerHTML = "<p>Загружаем Вашу погоду...подождите немного</p>";
+    weatherContainer.innerHTML = "<p>Загружаем Вашу погоду...подождите немного...</p>";
     refreshButton.disabled = true;
 
     fetch(url)
@@ -224,16 +257,15 @@ async function searchCity(query) {
 function setupCityInput() {
     cityInput.addEventListener("input", async (e) => {
         const query = e.target.value.trim();
+        selectedCity = null;
+        hideCityInputError();
         clearSuggestions();
 
         if (query.length < 2) return;
 
         const results = await searchCity(query);
         if (results.length === 0) {
-            const li = document.createElement("li");
-            li.className = "suggestions-item empty";
-            li.textContent = "Город не найден";
-            suggestionsList.appendChild(li);
+            showCityInputError("Город не найден. Выберите город из списка.");
             return;
         }
 
@@ -244,8 +276,18 @@ function setupCityInput() {
             li.dataset.lat = city.lat;
             li.dataset.lon = city.lon;
             li.addEventListener("click", () => {
+                selectedCity = {
+                    name: city.name,
+                    country: city.country,
+                    lat: city.lat,
+                    lon: city.lon
+                };
+
+                cityInput.value = `${city.name}, ${city.country}`;
+                clearSuggestions();
+                hideCityInputError();
+
                 fetchWeatherByCoords(city.lat, city.lon);
-                hideCityForm();
             });
             suggestionsList.appendChild(li);
         });
@@ -262,6 +304,7 @@ function init() {
     loadState();
     createAppContainer();
     createTile(appContainer);
+    createAddCityButton(appContainer);
     weatherContainer = createWeatherContainer(appContainer);
     const formElements = createCityForm(appContainer);
 
@@ -271,6 +314,16 @@ function init() {
     refreshButton = createRefreshButton(appContainer);
 
     setupCityInput();
+    cityInput.addEventListener("blur", () => {
+        const text = cityInput.value.trim();
+        if (!text) {
+            hideCityInputError();
+            return;
+        }
+        if (!selectedCity) {
+            showCityInputError("Пожалуйста, выберите город из выпадающего списка.");
+        }
+    });
     refreshButton.addEventListener("click", () => {
         const { currentLocation } = currentState;
         if (currentLocation?.lat && currentLocation?.lon) {
