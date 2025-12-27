@@ -1,6 +1,6 @@
 const APP_STATE_KEY = "weatherAppState";
 const API_KEY = "11bfaffb59904ac8ba3205312252512"
-const BASE_URL = "https://api.weatherapi.com/v1/current.json";
+const BASE_URL = "https://api.weatherapi.com/v1/forecast.json";
 let currentState = {
     currentLocation: null,
     cities: [],
@@ -114,8 +114,35 @@ function renderWeather(data) {
         ? "https:" + current.condition.icon
         : current.condition.icon;
 
+    const days = data.forecast?.forecastday || [];
+
+    const daysHtml = days.map((d) => {
+        const dayIcon = d.day.condition.icon.startsWith("//")
+            ? "https:" + d.day.condition.icon
+            : d.day.condition.icon;
+
+        const dateText = new Date(d.date).toLocaleDateString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+        });
+
+        return `
+      <div class="forecast-day">
+        <div class="forecast-date">${dateText}</div>
+        <img class="forecast-icon" src="${dayIcon}" alt="icon" />
+        <div class="forecast-temp">${Math.round(d.day.avgtemp_c)}°C</div>
+        <div class="forecast-desc">${d.day.condition.text}</div>
+      </div>
+    `;
+    }).join("");
+
+
     weatherContainer.innerHTML = `
       <div class="weather-card">
+        <h3 class="forecast-title">Прогноз на 5 дней</h3>
+        <div class="forecast-grid">
+            ${daysHtml}
+        </div>
         <h2>${location.name}, ${location.country}</h2>
         <p class="temp">${Math.round(current.temp_c)}°C</p>
         <p class="desc">${current.condition.text}</p>
@@ -132,7 +159,7 @@ function renderWeather(data) {
 }
 
 function fetchWeatherByCoords(lat, lon) {
-    const url = `${BASE_URL}?key=${API_KEY}&q=${lat},${lon}&lang=ru&units=metric`;
+    const url = `${BASE_URL}?key=${API_KEY}&q=${lat},${lon}&days=5&lang=ru`;
 
     weatherContainer.innerHTML = "<p>Загружаем Вашу погоду...подождите немного</p>";
     refreshButton.disabled = true;
@@ -185,11 +212,9 @@ async function searchCity(query) {
 
     try {
         const response = await fetch(
-            `http://api.weatherapi.com/v1/searchjson?key=11bfaffb59904ac8ba3205312252512&q=${encodeURIComponent(query)}`
+            `https://api.weatherapi.com/v1/search.json?key=${API_KEY}&q=${encodeURIComponent(query)}`
         );
-
         if (!response.ok) return [];
-
         return await response.json();
     } catch (error) {
         return [];
