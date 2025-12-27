@@ -66,11 +66,19 @@ function createCityForm(container) {
     error.id = "city-error";
     error.style.display = "none";
 
-    form.append(input, suggestions, error);
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.id = "add-city-btn";
+    addBtn.textContent = "Добавить город";
+
+    addBtn.addEventListener("click", () => {
+        showCityForm();
+    });
+
+    form.append(input, suggestions, error, addBtn);
     container.appendChild(form);
 
-    return {form, input, suggestions, error};
-
+    return { form, input, suggestions, error, addBtn };
 }
 
 function createAddCityButton(container) {
@@ -120,6 +128,7 @@ function showCityForm() {
     cityInput.focus();
     cityInput.value = "";
     clearSuggestions();
+    refreshButton.style.display = "none";
 }
 
 function saveState() {
@@ -208,6 +217,7 @@ function fetchWeatherByCoords(lat, lon) {
             currentState.lastUpdated = new Date().toISOString();
             saveState();
             renderWeather(data);
+            refreshButton.style.display = "inline-block";
             refreshButton.disabled = false;
         })
         .catch(() => {
@@ -304,7 +314,6 @@ function init() {
     loadState();
     createAppContainer();
     createTile(appContainer);
-    createAddCityButton(appContainer);
     weatherContainer = createWeatherContainer(appContainer);
     const formElements = createCityForm(appContainer);
 
