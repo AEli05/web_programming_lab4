@@ -49,7 +49,6 @@ function createCityForm(container) {
     const form = document.createElement("form");
     form.classList.add("city-form");
     form.id = "city-form";
-    form.style.display = "none";
 
     const input = document.createElement("input");
     input.type = "text";
@@ -66,35 +65,12 @@ function createCityForm(container) {
     error.id = "city-error";
     error.style.display = "none";
 
-    const addBtn = document.createElement("button");
-    addBtn.type = "button";
-    addBtn.id = "add-city-btn";
-    addBtn.textContent = "Добавить город";
 
-    addBtn.addEventListener("click", () => {
-        showCityForm();
-    });
-
-    form.append(input, suggestions, error, addBtn);
+    form.append(input, suggestions, error);
     container.appendChild(form);
 
-    return { form, input, suggestions, error, addBtn };
+    return { form, input, suggestions, error};
 }
-
-function createAddCityButton(container) {
-    const btn = document.createElement("button");
-    btn.id = "add-city-btn";
-    btn.textContent = "Добавить город";
-    btn.type = "button";
-
-    btn.addEventListener("click", () => {
-        showCityForm();
-    });
-
-    container.appendChild(btn);
-    return btn;
-}
-
 
 function showError(message) {
     const error = document.getElementById("city-error");
@@ -128,7 +104,6 @@ function showCityForm() {
     cityInput.focus();
     cityInput.value = "";
     clearSuggestions();
-    refreshButton.style.display = "none";
 }
 
 function saveState() {
@@ -154,7 +129,6 @@ function renderWeather(data) {
     const todayIconUrl = today.condition.icon.startsWith("//")
         ? "https:" + today.condition.icon
         : today.condition.icon;
-
     const daysHtml = forecastDays.map((d, index) => {
         const dayIconUrl = d.day.condition.icon.startsWith("//")
             ? "https:" + d.day.condition.icon
@@ -213,8 +187,6 @@ function fetchWeatherByCoords(lat, lon) {
     })
 
         .then((data) => {
-            currentState.weatherData = data;
-            currentState.lastUpdated = new Date().toISOString();
             saveState();
             renderWeather(data);
             refreshButton.style.display = "inline-block";
@@ -231,22 +203,39 @@ function fetchWeatherByCoords(lat, lon) {
 
 function requestLocation() {
     if (!navigator.geolocation) {
-        showError("Возникли небольшие проблемы с определением вашей геолокации :(");
+        showError("Браузер не поддерживает геолокацию.");
         showCityForm();
+        return;
     }
 
     weatherContainer.innerHTML = "<p>Определяем местоположение, подождите...</p>";
+    refreshButton.disabled = true;
 
-    navigator.geolocation.getCurrentPosition((position) => {
-        const { latitude: lat, longitude: lon } = position.coords;
-        currentState.currentLocation = { name: "Текущее местоположение", lat, lon };
-        saveState();
-        fetchWeatherByCoords(lat, lon);
-    },
-    (error) => {
-        showCityForm();
-        weatherContainer.innerHTML = "<p>Не получилось корректно определить ваше местоположение</p>";
-    }
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const { latitude: lat, longitude: lon } = position.coords;
+
+            currentState.currentLocation = {
+                name: "Текущее местоположение",
+                lat,
+                lon,
+                source: "geo"
+            };
+            saveState();
+
+            fetchWeatherByCoords(lat, lon);
+        },
+        () => {
+            showCityForm();
+            weatherContainer.innerHTML =
+                "<p>Геолокация выключена. Введите город вручную.</p>";
+            refreshButton.disabled = false;
+        },
+        {
+            enableHighAccuracy: false,
+            timeout: 8000,
+            maximumAge: 0
+        }
     );
 }
 
@@ -297,6 +286,13 @@ function setupCityInput() {
                 clearSuggestions();
                 hideCityInputError();
 
+                currentState.currentLocation = {
+                    name: `${city.name}, ${city.country}`,
+                    lat: city.lat,
+                    lon: city.lon,
+                    source: "city"
+                };
+                saveState();
                 fetchWeatherByCoords(city.lat, city.lon);
             });
             suggestionsList.appendChild(li);
@@ -323,6 +319,7 @@ function init() {
     refreshButton = createRefreshButton(appContainer);
 
     setupCityInput();
+
     cityInput.addEventListener("blur", () => {
         const text = cityInput.value.trim();
         if (!text) {
@@ -333,14 +330,26 @@ function init() {
             showCityInputError("Пожалуйста, выберите город из выпадающего списка.");
         }
     });
+
+
     refreshButton.addEventListener("click", () => {
-        const { currentLocation } = currentState;
-        if (currentLocation?.lat && currentLocation?.lon) {
-            fetchWeatherByCoords(currentLocation.lat, currentLocation.lon);
+        const loc = currentState.currentLocation;
+        if (loc?.lat && loc?.lon) {
+            fetchWeatherByCoords(loc.lat, loc.lon);
+        } else {
+            requestLocation();
         }
     });
 
-    requestLocation()
+    if (currentState.currentLocation?.source === "city") {
+        fetchWeatherByCoords(
+            currentState.currentLocation.lat,
+            currentState.currentLocation.lon
+        );
+        return;
+    }
+
+    requestLocation();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
