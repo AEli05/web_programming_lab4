@@ -417,15 +417,17 @@ function init() {
         }
     });
 
-    if (currentState.currentLocation?.source === "city") {
-        fetchWeatherByCoords(
-            currentState.currentLocation.lat,
-            currentState.currentLocation.lon
-        );
-        return;
+    const hasSavedState =
+        !!localStorage.getItem(APP_STATE_KEY) &&
+        !!currentState.currentLocation?.lat &&
+        !!currentState.currentLocation?.lon;
+
+    if (hasSavedState) {
+        fetchWeatherByCoords(currentState.currentLocation.lat, currentState.currentLocation.lon);
+    } else {
+        requestLocation();
     }
 
-    requestLocation();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
