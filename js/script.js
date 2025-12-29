@@ -381,20 +381,39 @@ function setupCityInput() {
 
 function init() {
     loadState();
+
     createAppContainer();
     createTile(appContainer);
+
     const formElements = createCityForm(appContainer);
     savedCitiesContainer = createSavedCitiesContainer(appContainer);
     weatherContainer = createWeatherContainer(appContainer);
 
-    renderSavedCities();
-
     cityInput = formElements.input;
     suggestionsList = formElements.suggestions;
     cityError = formElements.error;
+
     refreshButton = createRefreshButton(appContainer);
 
+    renderSavedCities();
     setupCityInput();
+
+    formElements.form.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const text = cityInput.value.trim();
+
+        if (!text) {
+            showCityInputError("Введите название города.");
+            return;
+        }
+
+        if (!selectedCity) {
+            showCityInputError("Выберите город из выпадающего списка.");
+
+        }
+
+    });
 
     cityInput.addEventListener("blur", () => {
         const text = cityInput.value.trim();
@@ -407,6 +426,11 @@ function init() {
         }
     });
 
+    document.addEventListener("click", (e) => {
+        if (!cityInput.contains(e.target) && !suggestionsList.contains(e.target)) {
+            clearSuggestions();
+        }
+    });
 
     refreshButton.addEventListener("click", () => {
         const loc = currentState.currentLocation;
@@ -417,17 +441,12 @@ function init() {
         }
     });
 
-    const hasSavedState =
-        !!localStorage.getItem(APP_STATE_KEY) &&
-        !!currentState.currentLocation?.lat &&
-        !!currentState.currentLocation?.lon;
 
-    if (hasSavedState) {
+    if (currentState.currentLocation?.lat && currentState.currentLocation?.lon) {
         fetchWeatherByCoords(currentState.currentLocation.lat, currentState.currentLocation.lon);
     } else {
         requestLocation();
     }
-
 }
 
 document.addEventListener("DOMContentLoaded", () => {
