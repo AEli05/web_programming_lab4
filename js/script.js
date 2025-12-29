@@ -12,6 +12,7 @@ let cityError = null;
 let refreshButton = null;
 let weatherContainer = null;
 let selectedCity = null;
+let savedCitiesContainer = null;
 
 function createAppContainer() {
     appContainer = document.getElementById("app");
@@ -72,6 +73,14 @@ function createCityForm(container) {
     return { form, input, suggestions, error};
 }
 
+function createSavedCitiesContainer(container) {
+    const div = document.createElement("div");
+    div.id = "saved-cities";
+    container.appendChild(div);
+    return div;
+}
+
+
 function showError(message) {
     const error = document.getElementById("city-error");
     error.textContent = message;
@@ -108,6 +117,58 @@ function showCityForm() {
 
 function saveState() {
     localStorage.setItem(APP_STATE_KEY, JSON.stringify(currentState));
+}
+
+function addCityToState(city) {
+    const exists = currentState.cities.some(
+        c =>
+            (c.lat === city.lat && c.lon === city.lon) ||
+            (c.name && city.name && c.name.toLowerCase() === city.name.toLowerCase())
+    );
+
+    if (!exists) {
+        currentState.cities.push(city);
+        saveState();
+        renderSavedCities();
+    }
+}
+
+function renderSavedCities() {
+    if (!savedCitiesContainer) return;
+
+    savedCitiesContainer.innerHTML = "";
+
+    currentState.cities.forEach((city, index) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "saved-city-item";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "saved-city-btn";
+        btn.textContent = city.name;
+
+        btn.addEventListener("click", () => {
+            currentState.currentLocation = city;
+            saveState();
+            fetchWeatherByCoords(city.lat, city.lon);
+        });
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "remove-city-btn";
+        removeBtn.textContent = "✕";
+
+        removeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+
+            currentState.cities.splice(index, 1);
+            saveState();
+            renderSavedCities();
+        });
+
+        wrapper.append(btn, removeBtn);
+        savedCitiesContainer.appendChild(wrapper);
+    });
 }
 
 function loadState() {
@@ -223,6 +284,13 @@ function requestLocation() {
             };
             saveState();
 
+            addCityToState({
+                name: "Текущее местоположение",
+                lat,
+                lon,
+                source: "geo"
+            });
+
             fetchWeatherByCoords(lat, lon);
         },
         () => {
@@ -292,7 +360,12 @@ function setupCityInput() {
                     lon: city.lon,
                     source: "city"
                 };
-                saveState();
+                addCityToState({
+                    name: `${city.name}, ${city.country}`,
+                    lat: city.lat,
+                    lon: city.lon,
+                    source: "city"
+                });
                 fetchWeatherByCoords(city.lat, city.lon);
             });
             suggestionsList.appendChild(li);
@@ -310,8 +383,11 @@ function init() {
     loadState();
     createAppContainer();
     createTile(appContainer);
-    weatherContainer = createWeatherContainer(appContainer);
     const formElements = createCityForm(appContainer);
+    savedCitiesContainer = createSavedCitiesContainer(appContainer);
+    weatherContainer = createWeatherContainer(appContainer);
+
+    renderSavedCities();
 
     cityInput = formElements.input;
     suggestionsList = formElements.suggestions;
