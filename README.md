@@ -1,5 +1,8 @@
 # web_programming_lab4
 This repository consists of my university/job projects in web programming - lab4
+
+ссылка на сайт - https://aeli05.github.io/web_programming_lab4/
+
 В данной лабораторной работе выполнены следующие требования:
 
 Верстка и адаптивность - 3 балла
