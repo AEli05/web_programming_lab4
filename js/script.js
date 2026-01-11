@@ -1,5 +1,5 @@
 const APP_STATE_KEY = "weatherAppState";
-const API_KEY = "11bfaffb59904ac8ba3205312252512"
+const API_KEY = "4f49a3f5ee2b4355994152929261001"
 const BASE_URL = "https://api.weatherapi.com/v1/forecast.json";
 let currentState = {
     currentLocation: null,
@@ -102,7 +102,7 @@ function hideCityInputError() {
 
 
 function clearSuggestions() {
-    suggestionsList.innerHTML = "";
+    clearContainer(suggestionsList);
 }
 
 function showCityForm() {
@@ -136,7 +136,7 @@ function addCityToState(city) {
 function renderSavedCities() {
     if (!savedCitiesContainer) return;
 
-    savedCitiesContainer.innerHTML = "";
+    clearContainer(savedCitiesContainer);
 
     currentState.cities.forEach((city, index) => {
         const wrapper = document.createElement("div");
@@ -179,66 +179,126 @@ function loadState() {
 }
 
 function renderWeather(data) {
+    clearContainer(weatherContainer);
     const location = data.location;
     const current = data.current;
 
-    const forecastDays = data.forecast?.forecastday || [];
-    if (forecastDays.length === 0) return;
+    const forecastDays = data.forecast.forecastday;
+    const card = document.createElement("div")
+    card.className = "weather-card";
 
-    const today = forecastDays[0].day;
+    const forecastTitle = document.createElement("h3");
+    forecastTitle.className = "forecast-title";
+    forecastTitle.textContent = "Прогноз на 5 дней";
 
-    const todayIconUrl = today.condition.icon.startsWith("//")
-        ? "https:" + today.condition.icon
-        : today.condition.icon;
-    const daysHtml = forecastDays.map((d, index) => {
-        const dayIconUrl = d.day.condition.icon.startsWith("//")
-            ? "https:" + d.day.condition.icon
-            : d.day.condition.icon;
+    const forecastGrid = document.createElement("div");
+    forecastGrid.className = "forecast-grid";
 
-        const dateText = new Date(d.date).toLocaleDateString("ru-RU", {
+    forecastDays.forEach((day, index) => {
+        const dayCard = document.createElement("div");
+        dayCard.className = "forecast-day";
+        if (index === 0) {
+            dayCard.classList.add("today");
+        }
+
+        const date = document.createElement("div");
+        date.className = "forecast-date";
+        date.textContent = new Date(day.date).toLocaleDateString("ru-RU", {
             day: "2-digit",
             month: "2-digit",
         });
 
-        return `
-          <div class="forecast-day ${index === 0 ? "today" : ""}">
-            <div class="forecast-date">${dateText}</div>
-            <img class="forecast-icon" src="${dayIconUrl}" alt="icon" />
-            <div class="forecast-temp">${Math.round(d.day.avgtemp_c)}°C</div>
-            <div class="forecast-desc">${d.day.condition.text}</div>
-          </div>
-        `;
-    }).join("");
+        const icon = document.createElement("img");
+        icon.className = "forecast-icon";
+        icon.src = day.day.condition.icon.startsWith("//")
+            ? "https:" + day.day.condition.icon
+            : day.day.condition.icon;
+        icon.alt = "Погода";
 
-    weatherContainer.innerHTML = `
-      <div class="weather-card">
-        <h3 class="forecast-title">Прогноз на 5 дней</h3>
-        <div class="forecast-grid">
-          ${daysHtml}
-        </div>
-        <h2>${location.name}, ${location.country}</h2>
-        <p class="temp">${Math.round(today.avgtemp_c)}°C</p>
-        <p class="desc">${today.condition.text}</p>
-        <img src="${todayIconUrl}" alt="Погода" class="weather-icon"/>
+        const temp = document.createElement("div");
+        temp.className = "forecast-temp";
+        temp.textContent = `${Math.round(day.day.avgtemp_c)}°C`;
 
-        <div class="weather-details">
-          <p><strong>Мин:</strong> ${Math.round(today.mintemp_c)}°C</p>
-          <p><strong>Макс:</strong> ${Math.round(today.maxtemp_c)}°C</p>
-          <p><strong>Ощущается как:</strong> ${Math.round(current.feelslike_c)}°C</p>
-          <p><strong>Влажность:</strong> ${current.humidity}%</p>
-          <p><strong>Давление:</strong> ${current.pressure_mb} гПа</p>
-          <p><strong>Ветер:</strong> ${current.wind_kph} км/ч</p>
-        </div>
+        const desc = document.createElement("div");
+        desc.className = "forecast-desc";
+        desc.textContent = day.day.condition.text;
 
-        <small>Обновлено: ${new Date().toLocaleTimeString("ru-RU")}</small>
-      </div>
-    `;
+        dayCard.append(date, icon, temp, desc);
+        forecastGrid.appendChild(dayCard);
+    });
+
+    const cityTitle = document.createElement("h2");
+    cityTitle.textContent = `${location.name}, ${location.country}`;
+
+    const tempNow = document.createElement("p");
+    tempNow.className = "temp";
+    tempNow.textContent = `${Math.round(forecastDays[0].day.avgtemp_c)}°C`;
+
+    const descNow = document.createElement("p");
+    descNow.className = "desc";
+    descNow.textContent = forecastDays[0].day.condition.text;
+
+    const mainIcon = document.createElement("img");
+    mainIcon.className = "weather-icon";
+    mainIcon.src = forecastDays[0].day.condition.icon.startsWith("//")
+        ? "https:" + forecastDays[0].day.condition.icon
+        : forecastDays[0].day.condition.icon;
+    mainIcon.alt = "Погода";
+
+    const details = document.createElement("div");
+    details.className = "weather-details";
+
+    function createDetail(label, value) {
+        const p = document.createElement("p");
+        const strong = document.createElement("strong");
+        strong.textContent = label;
+        p.append(strong, `${value}`);
+        return p;
+    }
+
+    details.append(
+        createDetail("Мин:", `${Math.round(forecastDays[0].day.mintemp_c)}°C`),
+        createDetail("Макс:", `${Math.round(forecastDays[0].day.maxtemp_c)}°C`),
+        createDetail("Ощущается как:", `${Math.round(current.feelslike_c)}°C`),
+        createDetail("Влажность:", `${current.humidity}%`),
+        createDetail("Давление:", `${current.pressure_mb} гПа`),
+        createDetail("Ветер:", `${current.wind_kph} км/ч`)
+    );
+
+    const updated = document.createElement("small");
+    updated.textContent = `Обновлено: ${new Date().toLocaleTimeString("ru-RU")}`;
+
+    card.append(
+        forecastTitle,
+        forecastGrid,
+        cityTitle,
+        tempNow,
+        descNow,
+        mainIcon,
+        details,
+        updated
+    );
+
+    weatherContainer.appendChild(card);
+}
+
+function clearContainer(container) {
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+}
+
+function showMessage(container, message) {
+    clearContainer(container);
+    const p = document.createElement("p");
+    p.textContent = message;
+    container.appendChild(p);
 }
 
 function fetchWeatherByCoords(lat, lon) {
     const url = `${BASE_URL}?key=${API_KEY}&q=${lat},${lon}&days=5&lang=ru`;
 
-    weatherContainer.innerHTML = "<p>Загружаем Вашу погоду...подождите немного...</p>";
+    showMessage(weatherContainer, "Загружаем Вашу погоду...");
     refreshButton.disabled = true;
 
     fetch(url)
@@ -255,7 +315,7 @@ function fetchWeatherByCoords(lat, lon) {
         })
         .catch(() => {
             showError("Не удалось загрузить погоду.");
-            weatherContainer.innerHTML = "<p>Не удалось загрузить данные</p>";
+            showMessage(weatherContainer, "Не удалось загрузить данные");
             refreshButton.disabled = false;
             showCityForm();
         })
@@ -269,7 +329,7 @@ function requestLocation() {
         return;
     }
 
-    weatherContainer.innerHTML = "<p>Определяем местоположение, подождите...</p>";
+    showMessage(weatherContainer, "Определяем местоположение, подождите...");
     refreshButton.disabled = true;
 
     navigator.geolocation.getCurrentPosition(
@@ -295,8 +355,10 @@ function requestLocation() {
         },
         () => {
             showCityForm();
-            weatherContainer.innerHTML =
-                "<p>Геолокация выключена. Введите город вручную.</p>";
+            showMessage(
+                weatherContainer,
+                "Геолокация выключена. Введите город вручную."
+            );
             refreshButton.disabled = false;
         },
         {
